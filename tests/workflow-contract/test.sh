@@ -25,4 +25,12 @@ fi
 printf '%s\n' "$invalid_output" | grep -F 'invalid.yml' >/dev/null || \
   fail 'invalid fixture output did not identify the violating file'
 
+if unrelated_output=$(GITHUB_WORKSPACE="$test_dir/fixtures/unrelated-persist" bash "$action_dir/check.sh" 2>&1); then
+  printf '%s\n' "$unrelated_output" >&2
+  fail 'unrelated persist-credentials setting was accepted'
+fi
+
+printf '%s\n' "$unrelated_output" | grep -F 'unrelated.yml:12: actions/checkout requires persist-credentials: false' >/dev/null || \
+  fail 'unrelated persist-credentials output did not identify the checkout line'
+
 printf 'workflow-contract tests passed\n'
