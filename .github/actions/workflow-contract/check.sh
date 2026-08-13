@@ -20,6 +20,21 @@ check_file() {
       invalid = 1
     }
 
+    function indentation(value, prefix) {
+      prefix = value
+      sub(/[^[:space:]].*$/, "", prefix)
+      return length(prefix)
+    }
+
+    function check_checkout() {
+      if (checkout_line && !checkout_has_persist_credentials_false) {
+        report(checkout_line, "actions/checkout requires persist-credentials: false")
+      }
+      checkout_line = 0
+      checkout_with_indent = -1
+      checkout_with_child_indent = -1
+    }
+
     {
       line_number = $0
       sub(/:.*/, "", line_number)
@@ -27,18 +42,36 @@ check_file() {
       sub(/^[0-9]+:/, "", line)
       sub(/[[:space:]]*#.*/, "", line)
       sub(/[[:space:]]+$/, "", line)
+      indent = indentation(line)
+
+      if (line ~ /^[[:space:]]*-[[:space:]]/) {
+        if (checkout_line && indent <= checkout_step_indent) {
+          check_checkout()
+        }
+        step_indent = indent
+      }
+
+      if (checkout_line && checkout_with_indent >= 0 && line !~ /^[[:space:]]*$/ && indent <= checkout_with_indent) {
+        checkout_with_indent = -1
+        checkout_with_child_indent = -1
+      }
 
       if (line ~ /^permissions:[[:space:]]*/) {
         has_permissions = 1
       }
 
-      if (index(line, "actions/checkout") > 0) {
-        has_checkout = 1
-        checkout_line = line_number
+      if (checkout_line && line ~ /^[[:space:]]*with:[[:space:]]*$/ && indent == checkout_key_indent) {
+        checkout_with_indent = indent
+        checkout_with_child_indent = -1
       }
 
-      if (line ~ /^[[:space:]]*persist-credentials:[[:space:]]*[\042\047]?false[\042\047]?[[:space:]]*$/) {
-        has_persist_credentials_false = 1
+      if (checkout_line && checkout_with_indent >= 0 && line !~ /^[[:space:]]*$/ && indent > checkout_with_indent) {
+        if (checkout_with_child_indent < 0) {
+          checkout_with_child_indent = indent
+        }
+        if (indent == checkout_with_child_indent && line ~ /^[[:space:]]*persist-credentials:[[:space:]]*[\042\047]?false[\042\047]?[[:space:]]*$/) {
+          checkout_has_persist_credentials_false = 1
+        }
       }
 
       if (line ~ /^[[:space:]-]*uses:[[:space:]]*/) {
@@ -54,6 +87,21 @@ check_file() {
             report(line_number, "external uses ref must be a 40-character hexadecimal SHA")
           }
         }
+
+        if (action ~ /^actions\/checkout@/) {
+          if (checkout_line) {
+            check_checkout()
+          }
+          checkout_line = line_number
+          checkout_step_indent = step_indent
+          checkout_key_indent = indent
+          if (line ~ /^[[:space:]]*-[[:space:]]+uses:[[:space:]]*/) {
+            checkout_key_indent += 2
+          }
+          checkout_with_indent = -1
+          checkout_with_child_indent = -1
+          checkout_has_persist_credentials_false = 0
+        }
       }
     }
 
@@ -61,9 +109,7 @@ check_file() {
       if (require_permissions == "1" && !has_permissions) {
         report(1, "missing top-level permissions declaration")
       }
-      if (has_checkout && !has_persist_credentials_false) {
-        report(checkout_line, "actions/checkout requires persist-credentials: false")
-      }
+      check_checkout()
       exit invalid
     }
   '; then
