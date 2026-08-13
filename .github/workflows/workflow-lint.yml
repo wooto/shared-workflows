@@ -1,0 +1,47 @@
+name: Reusable workflow lint
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout caller repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.0.0
+
+      - name: Install actionlint
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+
+      - name: Run actionlint
+        run: actionlint -shellcheck=
+
+      - name: Run zizmor on workflows
+        uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v1.29.0
+        with:
+          inputs: .github/workflows
+          min-severity: high
+          online-audits: false
+          advanced-security: false
+
+      - name: Run zizmor on local actions
+        if: ${{ hashFiles('.github/actions/**') != '' }}
+        uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v1.29.0
+        with:
+          inputs: .github/actions
+          min-severity: high
+          online-audits: false
+          advanced-security: false
+
+      - name: Run workflow contract
+        uses: wooto/shared-workflows/.github/actions/workflow-contract@48ac77e3889ef06d801d4147089932fe48b9e197
