@@ -26,7 +26,8 @@ jobs:
         run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
 
       - name: Run actionlint
-        run: actionlint -shellcheck=
+        # Generated local JS action entrypoints are built by caller workflows and validated by caller CI.
+        run: actionlint -shellcheck= -ignore 'file ".*" does not exist.*specified at "main" key in ".*" action'
 
       - name: Run zizmor on workflows
         uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v1.29.0
