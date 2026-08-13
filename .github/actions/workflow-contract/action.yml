@@ -1,0 +1,8 @@
+name: Workflow contract
+description: Validate repository GitHub Actions hardening contracts
+runs:
+  using: composite
+  steps:
+    - name: Check workflow contract
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/check.sh"
