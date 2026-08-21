@@ -7,7 +7,7 @@ on:
         description: Runner label for the reusable lint job.
         required: false
         type: string
-        default: wooto-linux-small
+        default: wooto-linux-medium-dind
 
 permissions:
   contents: read
