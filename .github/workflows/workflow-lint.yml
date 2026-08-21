@@ -2,13 +2,19 @@ name: Reusable workflow lint
 
 on:
   workflow_call:
+    inputs:
+      runner:
+        description: Runner label for the reusable lint job.
+        required: false
+        type: string
+        default: wooto-linux-small
 
 permissions:
   contents: read
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     timeout-minutes: 15
     steps:
       - name: Checkout caller repository
